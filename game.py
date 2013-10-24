@@ -44,7 +44,7 @@ BGCOLOR = WHITE
 
 PHI = [(0, 400), (1000,400)]
 V = "FARMING"
-growth_scenario = [(1,"First settler"),(5, "House")] # ?
+growth_scenario = [(1,"First settler"),(5, "House"),(20, "House")] # ?
 
 CENTERPOINT = (WINDOWWIDTH//2, WINDOWHEIGHT//2)
 B = [] # buildings
@@ -52,10 +52,35 @@ R = [[PHI[0], PHI[1]]] # roads
 
 # a general instance of a function representing interest criteria for the interest function
 # Each f_i(B) returns output in [-1, 1] (so squash!)
-def centerfocus(p):
+def centerfocus(p, building_type):
     distance_to_corner = (euclidian_distance2D(CENTERPOINT, (0,0))//2)
     x =  distance_to_corner - euclidian_distance2D(p, CENTERPOINT)
     return x / distance_to_corner
+
+# Two-part Gaussian function
+def sociability(p1, beta1):
+    s = 0
+    for p2, beta2 in B:
+        distance = euclidian_distance2D(p2, p1)
+        (lmin, l0, lmax) = b.Sociability[(min(beta1, beta2), max(beta1, beta2))]
+        score = two_part_gaussian(distance, lmin, l0, lmax)
+        if score == -1:
+            return -1
+        s += score
+    if B:
+        s = (s / float(len(B)))
+    return s
+
+def two_part_gaussian(x, lmin, l0, lmax):
+    mu = l0
+    if x < lmin:
+        return -1
+    elif x <= l0:
+        sigma = (mu - lmin) / 3.0
+        return math.exp( (-1 * (x - mu)**2)/(2* sigma**2))
+    else: # l0 < x:
+        tau = (lmax - mu) / 3.0
+        return math.exp( (-1 * (x - mu)**2)/(2* tau**2))
 
 def euclidian_distance2D((p1, p2), (q1, q2)):
     return math.sqrt((q1 - p1)**2 + (q2 - p2)**2)
@@ -64,7 +89,7 @@ def euclidian_distance2D((p1, p2), (q1, q2)):
 def identity(building_type, p):
     s = 0
     for f,w in b.Building_encyclopaedia[building_type].functions:
-        x = eval(f)(p)
+        x = eval(f)(p, building_type)
         if x == -1:
             return 0
         else:
@@ -82,9 +107,8 @@ def seed(beta):
         # check conditions for constructing beta at p
 
         # compute I(beta) and perform random choice (aggregation test)
-        aggregation = 0.2 # ARBITRARY
+        aggregation = 0.3 # ARBITRARY
         if identity(beta, p) > aggregation:
-            print identity(beta, p)
             success = True
 
     return p
@@ -117,10 +141,14 @@ def main():
             elif event.type == MOUSEBUTTONUP:
                 mousex, mousey = event.pos
                 mouseClicked = True
-                print centerfocus((mousex, mousey))
             # Next part of Growth Scenario by pressing Enter
             elif event.type == KEYUP and event.key == K_RETURN:
                 nextScenario = True
+                ## DEBUG ##
+                #p = seed("House")
+                #B.append((p,"House"))
+                #connect_roads(p)
+                ###########
 
         ### CONTENT ###
 
